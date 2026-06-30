@@ -1,0 +1,14 @@
+.DS_Store
+.env
+.env.*
+*.log
+
+# Local editor files
+.vscode/
+.idea/
+
+# Terraform local state - later we will replace with remote state
+terraform.tfstate
+terraform.tfstate.*
+.terraform/
+.terraform.lock.hcl
