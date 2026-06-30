@@ -1,0 +1,25 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: postifyhq-web
+  namespace: postifyhq
+  labels:
+    app.kubernetes.io/name: postifyhq
+    app.kubernetes.io/part-of: workhour-platform
+    app.kubernetes.io/component: ingress
+    app.kubernetes.io/managed-by: kubectl
+    environment: development
+    team: platform-engineering
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: postifyhq.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: postifyhq-web
+                port:
+                  number: 80

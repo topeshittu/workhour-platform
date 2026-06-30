@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Namespace
+metadata: 
+    name: postifyhq
+    labels:
+        app.kubernetes.io/name: postifyhq
+        app.kubernetes.io/part-of: workhour-platform
+        app.kubernetes.io/managed-by: kubectl
+        environment: development
+        team: platform-engineering
+
