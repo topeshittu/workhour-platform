@@ -85,3 +85,36 @@ This test proves Pod-level self-healing. It does not prove application-level hea
 * Add monitoring for Pod restarts and unavailable replicas.
 * Add alerts for Deployment availability below desired replica count.
 
+
+## Failure Simulation 2 - MySQL Pod Deletion
+
+### Objective
+Test whether MySQL data survives Pod deletion when deployed using a StatefulSet and PVC.
+
+### Test performed
+1. Created a test table named `platform_test`.
+2. Inserted a test row before deleting the MySQL Pod.
+3. Deleted `postifyhq-mysql-0`.
+4. Waited for the StatefulSet to recreate the Pod.
+5. Queried the table again after recovery.
+
+### Result
+The MySQL Pod was recreated with the same StatefulSet identity: `postifyhq-mysql-0`.
+
+The Pod IP changed from `10.244.0.74` to `10.244.0.83`, but the PVC remained the same:
+
+`mysql-data-postifyhq-mysql-0`
+
+The test row still existed after recovery.
+
+### Conclusion
+The database data survived Pod deletion because MySQL stores its data on a PersistentVolumeClaim instead of relying on the container filesystem.
+
+### Limitation
+This proves persistence, not high availability. With only one MySQL replica, the database still becomes temporarily unavailable during Pod recovery.
+
+### Production improvements
+- Add automated MySQL backups.
+- Test restore from backup.
+- Consider managed database service such as AWS RDS for production.
+- Add monitoring for MySQL availability, storage usage, and restart count.
