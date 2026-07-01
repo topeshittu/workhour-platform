@@ -136,3 +136,74 @@ The new web Pods failed with:
 
 ```text
 CreateContainerConfigError
+
+
+
+
+## Failure Simulation 4 - Wrong ConfigMap Value
+
+### Objective
+
+Test what happens when a required ConfigMap key exists, but the value is incorrect.
+
+### Test performed
+
+1. Created a temporary MySQL client Pod that intentionally used the wrong database hostname: `wrong-mysql-service`.
+2. Attempted to connect to the PostifyHQ MySQL database.
+3. Captured the failed Pod status and logs.
+4. Created a second temporary MySQL client Pod using the correct `DB_HOST` value from `postifyhq-config`.
+5. Verified that the database connection succeeded.
+
+### Result
+
+The wrong-config test Pod started but failed at runtime:
+
+```text
+mysql-connectivity-wrong-config-test   0/1   Error
+```
+
+The logs showed:
+
+```text
+ERROR 2005 (HY000): Unknown MySQL server host 'wrong-mysql-service' (-2)
+```
+
+The recovery test Pod completed successfully:
+
+```text
+mysql-connectivity-recovery-test   0/1   Completed
+```
+
+The logs showed:
+
+```text
+DATABASE()
+postifyhq
+```
+
+### Conclusion
+
+A wrong ConfigMap value can allow the Pod to start while still causing the application or diagnostic workload to fail at runtime. This is more subtle than a missing ConfigMap key because Kubernetes may report the Deployment as healthy if the readiness probe does not check the failed dependency.
+
+### Key lesson
+
+Kubernetes readiness can only verify what the probe is designed to check. Since the PostifyHQ web readiness probe currently checks only whether port 80 is open, Kubernetes can report the web Pods as Ready even if the database hostname is wrong.
+
+### Recovery
+
+Restored the correct database hostname:
+
+```text
+DB_HOST=postifyhq-mysql
+```
+
+Then verified database connectivity using a temporary MySQL client Pod.
+
+### Production improvements
+
+* Add an application-aware `/ready` endpoint that verifies database connectivity.
+* Add post-deployment smoke tests to verify critical dependencies.
+* Add CI/CD validation for ConfigMap values.
+* Avoid manual configuration changes in production.
+* Add alerts for application-level failures, not just Pod readiness.
+
