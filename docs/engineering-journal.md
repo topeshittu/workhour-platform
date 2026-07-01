@@ -118,3 +118,21 @@ This proves persistence, not high availability. With only one MySQL replica, the
 - Test restore from backup.
 - Consider managed database service such as AWS RDS for production.
 - Add monitoring for MySQL availability, storage usage, and restart count.
+
+## Failure Simulation 3 - Missing ConfigMap Key
+
+### Objective
+Test what happens when a required ConfigMap key used by the PostifyHQ web Deployment is missing.
+
+### Test performed
+1. Removed `DB_HOST` from `postifyhq-config`.
+2. Applied the updated ConfigMap.
+3. Restarted the `postifyhq-web` Deployment so new Pods would read the updated ConfigMap.
+4. Checked the status of the new Pods.
+5. Described a failing Pod to inspect the Events section.
+
+### Result
+The new web Pods failed with:
+
+```text
+CreateContainerConfigError
