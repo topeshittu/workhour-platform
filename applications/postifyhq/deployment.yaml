@@ -25,9 +25,11 @@ spec:
         environment: development
         team: platform-engineering
     spec:
+      imagePullSecrets:
+        - name: dockerhub-pull-secret
       containers:
         - name: postifyhq-web
-          image: topeshittu/postifyhq:v1
+          image: topeshittu/postifyhq:build-4
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
