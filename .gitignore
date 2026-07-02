@@ -7,6 +7,8 @@
 .vscode/
 .idea/
 
+jenkins/kubeconfig/*.kubeconfig
+
 # Terraform local state - later we will replace with remote state
 terraform.tfstate
 terraform.tfstate.*
