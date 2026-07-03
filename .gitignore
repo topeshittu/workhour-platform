@@ -14,3 +14,9 @@ terraform.tfstate
 terraform.tfstate.*
 .terraform/
 .terraform.lock.hcl
+
+# Kubernetes credentials
+jenkins-deployer-kubeconfig.yaml
+*.kubeconfig
+kubeconfig.yaml
+jenkins/**/kubeconfig/
