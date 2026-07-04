@@ -110,6 +110,11 @@ spec:
                 secretKeyRef:
                   name: postifyhq-secret
                   key: API_KEY
+            - name: APP_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: postifyhq-secret
+                  key: APP_KEY
             - name: MAIL_USERNAME
               valueFrom:
                 secretKeyRef:
