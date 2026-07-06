@@ -137,13 +137,21 @@ spec:
               port: http
             failureThreshold: 30
             periodSeconds: 5
+          
           readinessProbe:
-            tcpSocket:
-              port: http
+            httpGet:
+              path: /
+              port: 80
             initialDelaySeconds: 10
             periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+
           livenessProbe:
-            tcpSocket:
-              port: http
+            httpGet:
+              path: /
+              port: 80
             initialDelaySeconds: 30
             periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 3
