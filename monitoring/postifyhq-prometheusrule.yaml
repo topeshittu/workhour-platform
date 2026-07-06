@@ -1,0 +1,26 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: postifyhq-availability-rules
+  namespace: monitoring
+  labels:
+    release: monitoring
+    app.kubernetes.io/name: postifyhq
+    app.kubernetes.io/part-of: workhour-platform
+spec:
+  groups:
+    - name: postifyhq.availability
+      rules:
+        - alert: PostifyHQWebReplicasUnavailable
+          expr: |
+            kube_deployment_status_replicas_available{namespace="postifyhq", deployment="postifyhq-web"}
+              <
+            kube_deployment_spec_replicas{namespace="postifyhq", deployment="postifyhq-web"}
+          for: 5m
+          labels:
+            severity: warning
+            app: postifyhq
+            component: web
+          annotations:
+            summary: "PostifyHQ web deployment has unavailable replicas"
+            description: "The PostifyHQ web deployment has fewer available replicas than desired for more than 5 minutes."
