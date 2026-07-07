@@ -1,0 +1,64 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alertmanager-webhook-receiver
+  namespace: monitoring
+data:
+  server.py: |
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_POST(self):
+            length = int(self.headers.get("Content-Length", 0))
+            body = self.rfile.read(length).decode("utf-8")
+
+            print("=== ALERTMANAGER WEBHOOK RECEIVED ===", flush=True)
+            print(body, flush=True)
+
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(b"ok")
+
+    HTTPServer(("0.0.0.0", 8080), Handler).serve_forever()
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alertmanager-webhook-receiver
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: alertmanager-webhook-receiver
+  template:
+    metadata:
+      labels:
+        app: alertmanager-webhook-receiver
+    spec:
+      containers:
+        - name: webhook-receiver
+          image: python:3.12-alpine
+          command: ["python", "/app/server.py"]
+          ports:
+            - containerPort: 8080
+          volumeMounts:
+            - name: receiver-script
+              mountPath: /app
+      volumes:
+        - name: receiver-script
+          configMap:
+            name: alertmanager-webhook-receiver
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: alertmanager-webhook-receiver
+  namespace: monitoring
+spec:
+  selector:
+    app: alertmanager-webhook-receiver
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
