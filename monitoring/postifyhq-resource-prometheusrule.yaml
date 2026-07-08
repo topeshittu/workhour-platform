@@ -1,0 +1,66 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: postifyhq-resource-rules
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  groups:
+    - name: postifyhq.resources
+      rules:
+        - alert: PostifyHQWebHighCPU
+          expr: |
+            (
+              sum by (pod) (
+                rate(container_cpu_usage_seconds_total{
+                  namespace="postifyhq",
+                  pod=~"postifyhq-web-.*"
+                }[2m])
+              )
+              /
+              sum by (pod) (
+                kube_pod_container_resource_limits{
+                  namespace="postifyhq",
+                  pod=~"postifyhq-web-.*",
+                  resource="cpu"
+                }
+              )
+            ) * 100 > 80
+          for: 2m
+          labels:
+            severity: warning
+            app: postifyhq
+            component: web
+            signal: cpu
+          annotations:
+            summary: "PostifyHQ web pod CPU usage is high"
+            description: "A PostifyHQ web pod has been using more than 80% of its CPU limit for more than 2 minutes."
+
+        - alert: PostifyHQWebHighMemory
+          expr: |
+            (
+              sum by (pod) (
+                container_memory_working_set_bytes{
+                  namespace="postifyhq",
+                  pod=~"postifyhq-web-.*"
+                }
+              )
+              /
+              sum by (pod) (
+                kube_pod_container_resource_limits{
+                  namespace="postifyhq",
+                  pod=~"postifyhq-web-.*",
+                  resource="memory"
+                }
+              )
+            ) * 100 > 70
+          for: 2m
+          labels:
+            severity: warning
+            app: postifyhq
+            component: web
+            signal: memory
+          annotations:
+            summary: "PostifyHQ web pod memory usage is high"
+            description: "A PostifyHQ web pod has been using more than 70% of its memory limit for more than 2 minutes."
