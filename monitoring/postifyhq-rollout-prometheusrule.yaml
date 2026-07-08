@@ -1,0 +1,24 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: postifyhq-rollout-rules
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  groups:
+    - name: postifyhq.rollout
+      rules:
+        - alert: PostifyHQWebRolloutStuck
+          expr: |
+            kube_deployment_status_replicas_updated{namespace="postifyhq", deployment="postifyhq-web"}
+              <
+            kube_deployment_spec_replicas{namespace="postifyhq", deployment="postifyhq-web"}
+          for: 3m
+          labels:
+            severity: warning
+            app: postifyhq
+            component: web
+          annotations:
+            summary: "PostifyHQ web rollout appears stuck"
+            description: "The PostifyHQ web deployment has fewer updated replicas than desired for more than 3 minutes. A new rollout may be failing while older pods are still serving traffic."
