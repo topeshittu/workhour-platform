@@ -1,0 +1,14 @@
+config:
+  modules:
+    postifyhq_ingress_http:
+      prober: http
+      timeout: 5s
+      http:
+        method: GET
+        preferred_ip_protocol: ip4
+        valid_status_codes:
+          - 200
+          - 302
+        no_follow_redirects: true
+        headers:
+          Host: postifyhq.local

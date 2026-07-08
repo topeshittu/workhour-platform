@@ -1,0 +1,27 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: postifyhq-blackbox-rules
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  groups:
+    - name: postifyhq.blackbox
+      rules:
+        - alert: PostifyHQIngressHTTPProbeFailed
+          expr: |
+            probe_success{
+              job="postifyhq-ingress-http",
+              app="postifyhq",
+              component="ingress"
+            } == 0
+          for: 2m
+          labels:
+            severity: warning
+            app: postifyhq
+            component: ingress
+            signal: http
+          annotations:
+            summary: "PostifyHQ HTTP ingress probe failed"
+            description: "The blackbox HTTP probe for PostifyHQ through the Kubernetes Ingress route has been failing for more than 2 minutes."

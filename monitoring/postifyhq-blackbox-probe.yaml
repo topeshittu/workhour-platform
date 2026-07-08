@@ -1,0 +1,22 @@
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: postifyhq-ingress-http
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  jobName: postifyhq-ingress-http
+  interval: 30s
+  scrapeTimeout: 10s
+  module: postifyhq_ingress_http
+  prober:
+    url: blackbox-exporter-prometheus-blackbox-exporter.monitoring.svc.cluster.local:9115
+  targets:
+    staticConfig:
+      static:
+        - http://ingress-nginx-controller.ingress-nginx.svc.cluster.local
+      labels:
+        app: postifyhq
+        component: ingress
+        probe: http
