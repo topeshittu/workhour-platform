@@ -1,0 +1,19 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: postifyhq-mysql-storage-metrics
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  namespaceSelector:
+    matchNames:
+      - postifyhq
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: postifyhq
+      app.kubernetes.io/component: mysql-storage-metrics
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 30s

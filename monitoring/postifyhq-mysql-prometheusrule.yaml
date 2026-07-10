@@ -1,0 +1,144 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: postifyhq-mysql-rules
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  groups:
+    - name: postifyhq.mysql
+      rules:
+        - alert: PostifyHQMySQLStatefulSetReplicasUnavailable
+          expr: |
+            kube_statefulset_status_replicas_ready{
+              namespace="postifyhq",
+              statefulset="postifyhq-mysql"
+            }
+              <
+            kube_statefulset_replicas{
+              namespace="postifyhq",
+              statefulset="postifyhq-mysql"
+            }
+          for: 2m
+          labels:
+            severity: warning
+            app: postifyhq
+            component: mysql
+            signal: statefulset
+          annotations:
+            summary: "PostifyHQ MySQL StatefulSet replicas unavailable"
+            description: "The PostifyHQ MySQL StatefulSet has fewer ready replicas than desired for more than 2 minutes."
+
+        - alert: PostifyHQMySQLPodNotReady
+          expr: |
+            (
+              kube_pod_status_ready{
+                namespace="postifyhq",
+                pod="postifyhq-mysql-0",
+                condition="true"
+              } == 0
+            )
+            or
+            absent(
+              kube_pod_status_ready{
+                namespace="postifyhq",
+                pod="postifyhq-mysql-0",
+                condition="true"
+              }
+            )
+          for: 2m
+          labels:
+            severity: warning
+            app: postifyhq
+            component: mysql
+            signal: pod
+          annotations:
+            summary: "PostifyHQ MySQL pod is not ready"
+            description: "The PostifyHQ MySQL pod is not Ready or the pod readiness metric is absent for more than 2 minutes."
+
+        - alert: PostifyHQMySQLPVCNotBound
+          expr: |
+            (
+              kube_persistentvolumeclaim_status_phase{
+                namespace="postifyhq",
+                persistentvolumeclaim="mysql-data-postifyhq-mysql-0",
+                phase="Bound"
+              } != 1
+            )
+            or
+            absent(
+              kube_persistentvolumeclaim_status_phase{
+                namespace="postifyhq",
+                persistentvolumeclaim="mysql-data-postifyhq-mysql-0",
+                phase="Bound"
+              }
+            )
+          for: 2m
+          labels:
+            severity: warning
+            app: postifyhq
+            component: mysql
+            signal: pvc
+          annotations:
+            summary: "PostifyHQ MySQL PVC is not bound"
+            description: "The PostifyHQ MySQL PVC is not Bound or the PVC Bound metric is absent for more than 2 minutes."
+
+        - alert: PostifyHQMySQLDeclaredPVCLowStorage
+          expr: |
+            postifyhq_mysql_pvc_available_percent{
+              namespace="postifyhq",
+              statefulset="postifyhq-mysql",
+              persistentvolumeclaim="mysql-data-postifyhq-mysql-0"
+            } < 20
+          for: 5m
+          labels:
+            severity: warning
+            app: postifyhq
+            component: mysql
+            signal: storage
+          annotations:
+            summary: "PostifyHQ MySQL declared PVC storage is low"
+            description: "The PostifyHQ MySQL data directory has less than 20% available space relative to the declared PVC capacity for more than 5 minutes."
+
+        - alert: PostifyHQMySQLDeclaredPVCCriticalStorage
+          expr: |
+            postifyhq_mysql_pvc_available_percent{
+              namespace="postifyhq",
+              statefulset="postifyhq-mysql",
+              persistentvolumeclaim="mysql-data-postifyhq-mysql-0"
+            } < 10
+          for: 2m
+          labels:
+            severity: critical
+            app: postifyhq
+            component: mysql
+            signal: storage
+          annotations:
+            summary: "PostifyHQ MySQL declared PVC storage is critically low"
+            description: "The PostifyHQ MySQL data directory has less than 10% available space relative to the declared PVC capacity for more than 2 minutes."
+
+        - alert: PostifyHQMySQLStorageMetricsScrapeDown
+          expr: |
+            (
+              up{
+                job="postifyhq-mysql-storage-metrics",
+                namespace="postifyhq"
+              } == 0
+            )
+            or
+            absent(
+              up{
+                job="postifyhq-mysql-storage-metrics",
+                namespace="postifyhq"
+              }
+            )
+          for: 2m
+          labels:
+            severity: warning
+            app: postifyhq
+            component: mysql
+            signal: metrics
+          annotations:
+            summary: "PostifyHQ MySQL storage metrics scrape is down"
+            description: "Prometheus cannot scrape the PostifyHQ MySQL storage exporter, so storage availability monitoring may be blind."

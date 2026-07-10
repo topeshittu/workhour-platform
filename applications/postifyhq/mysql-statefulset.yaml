@@ -1,94 +1,191 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: postifyhq-mysql
-  namespace: postifyhq
   labels:
-    app.kubernetes.io/name: postifyhq
-    app.kubernetes.io/part-of: workhour-platform
     app.kubernetes.io/component: mysql
     app.kubernetes.io/managed-by: kubectl
+    app.kubernetes.io/name: postifyhq
+    app.kubernetes.io/part-of: workhour-platform
     environment: development
     team: platform-engineering
+  name: postifyhq-mysql
+  namespace: postifyhq
 spec:
-  serviceName: postifyhq-mysql
   replicas: 1
   selector:
     matchLabels:
-      app.kubernetes.io/name: postifyhq
       app.kubernetes.io/component: mysql
+      app.kubernetes.io/name: postifyhq
+  serviceName: postifyhq-mysql
   template:
     metadata:
       labels:
+        app.kubernetes.io/component: mysql
         app.kubernetes.io/name: postifyhq
         app.kubernetes.io/part-of: workhour-platform
-        app.kubernetes.io/component: mysql
         environment: development
         team: platform-engineering
     spec:
       containers:
-        - name: mysql
-          image: mysql:8.0
-          imagePullPolicy: IfNotPresent
-          ports:
-            - name: mysql
-              containerPort: 3306
-          env:
-            - name: MYSQL_DATABASE
-              valueFrom:
-                configMapKeyRef:
-                  name: postifyhq-config
-                  key: DB_DATABASE
-            - name: MYSQL_USER
-              valueFrom:
-                secretKeyRef:
-                  name: postifyhq-secret
-                  key: DB_USERNAME
-            - name: MYSQL_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: postifyhq-secret
-                  key: DB_PASSWORD
-            - name: MYSQL_ROOT_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: postifyhq-secret
-                  key: MYSQL_ROOT_PASSWORD
-          volumeMounts:
-            - name: mysql-data
-              mountPath: /var/lib/mysql
-          resources:
-            requests:
-              cpu: "250m"
-              memory: "512Mi"
-            limits:
-              cpu: "1"
-              memory: "1Gi"
-          startupProbe:
-            tcpSocket:
-              port: mysql
-            failureThreshold: 30
-            periodSeconds: 5
-          readinessProbe:
-            tcpSocket:
-              port: mysql
-            initialDelaySeconds: 10
-            periodSeconds: 10
-          livenessProbe:
-            tcpSocket:
-              port: mysql
-            initialDelaySeconds: 30
-            periodSeconds: 10
-  volumeClaimTemplates:
-    - metadata:
-        name: mysql-data
-        labels:
-          app.kubernetes.io/name: postifyhq
-          app.kubernetes.io/component: mysql
-          environment: development
-      spec:
-        accessModes:
-          - ReadWriteOnce
+      - command:
+        - /bin/sh
+        - -c
+        - |-
+          cat > /tmp/exporter.py <<'PY'
+          import os
+          import subprocess
+          from http.server import BaseHTTPRequestHandler, HTTPServer
+
+          PVC_CAPACITY_BYTES = int(os.environ.get("PVC_CAPACITY_BYTES", "2147483648"))
+          PVC_NAME = os.environ.get("PVC_NAME", "mysql-data-postifyhq-mysql-0")
+          NAMESPACE = os.environ.get("NAMESPACE", "postifyhq")
+          STATEFULSET = os.environ.get("STATEFULSET", "postifyhq-mysql")
+          MYSQL_DATA_PATH = "/mysql-data"
+
+          def get_used_bytes():
+              try:
+                  output = subprocess.check_output(["du", "-sk", MYSQL_DATA_PATH], text=True)
+                  used_kb = int(output.split()[0])
+                  return used_kb * 1024
+              except Exception:
+                  return 0
+
+          def build_metrics():
+              used_bytes = get_used_bytes()
+              available_bytes = max(PVC_CAPACITY_BYTES - used_bytes, 0)
+
+              if PVC_CAPACITY_BYTES > 0:
+                  available_percent = (available_bytes / PVC_CAPACITY_BYTES) * 100
+                  used_percent = (used_bytes / PVC_CAPACITY_BYTES) * 100
+              else:
+                  available_percent = 0
+                  used_percent = 0
+
+              labels = f'namespace="{NAMESPACE}",statefulset="{STATEFULSET}",persistentvolumeclaim="{PVC_NAME}"'
+
+              return f"""# HELP postifyhq_mysql_pvc_declared_capacity_bytes Declared requested PVC capacity for PostifyHQ MySQL in bytes.
+          # TYPE postifyhq_mysql_pvc_declared_capacity_bytes gauge
+          postifyhq_mysql_pvc_declared_capacity_bytes{{{labels}}} {PVC_CAPACITY_BYTES}
+
+          # HELP postifyhq_mysql_pvc_used_bytes Current PostifyHQ MySQL data directory usage in bytes.
+          # TYPE postifyhq_mysql_pvc_used_bytes gauge
+          postifyhq_mysql_pvc_used_bytes{{{labels}}} {used_bytes}
+
+          # HELP postifyhq_mysql_pvc_available_bytes Declared PostifyHQ MySQL PVC capacity minus current data directory usage in bytes.
+          # TYPE postifyhq_mysql_pvc_available_bytes gauge
+          postifyhq_mysql_pvc_available_bytes{{{labels}}} {available_bytes}
+
+          # HELP postifyhq_mysql_pvc_available_percent Declared PostifyHQ MySQL PVC capacity available percentage.
+          # TYPE postifyhq_mysql_pvc_available_percent gauge
+          postifyhq_mysql_pvc_available_percent{{{labels}}} {available_percent:.2f}
+
+          # HELP postifyhq_mysql_pvc_used_percent Declared PostifyHQ MySQL PVC capacity used percentage.
+          # TYPE postifyhq_mysql_pvc_used_percent gauge
+          postifyhq_mysql_pvc_used_percent{{{labels}}} {used_percent:.2f}
+          """
+
+          class Handler(BaseHTTPRequestHandler):
+              def do_GET(self):
+                  if self.path != "/metrics":
+                      self.send_response(404)
+                      self.end_headers()
+                      return
+
+                  body = build_metrics().encode("utf-8")
+                  self.send_response(200)
+                  self.send_header("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
+                  self.send_header("Content-Length", str(len(body)))
+                  self.end_headers()
+                  self.wfile.write(body)
+
+              def log_message(self, format, *args):
+                  return
+
+          HTTPServer(("0.0.0.0", 9104), Handler).serve_forever()
+          PY
+
+          python /tmp/exporter.py
+        env:
+        - name: PVC_CAPACITY_BYTES
+          value: "2147483648"
+        - name: PVC_NAME
+          value: mysql-data-postifyhq-mysql-0
+        - name: NAMESPACE
+          value: postifyhq
+        - name: STATEFULSET
+          value: postifyhq-mysql
+        image: python:3.12-alpine
+        imagePullPolicy: IfNotPresent
+        name: mysql-storage-exporter
+        ports:
+        - containerPort: 9104
+          name: metrics
+        volumeMounts:
+        - mountPath: /mysql-data
+          name: mysql-data
+          readOnly: true
+      - env:
+        - name: MYSQL_DATABASE
+          valueFrom:
+            configMapKeyRef:
+              key: DB_DATABASE
+              name: postifyhq-config
+        - name: MYSQL_USER
+          valueFrom:
+            secretKeyRef:
+              key: DB_USERNAME
+              name: postifyhq-secret
+        - name: MYSQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: DB_PASSWORD
+              name: postifyhq-secret
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: MYSQL_ROOT_PASSWORD
+              name: postifyhq-secret
+        image: mysql:8.0
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          tcpSocket:
+            port: mysql
+        name: mysql
+        ports:
+        - containerPort: 3306
+          name: mysql
+        readinessProbe:
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          tcpSocket:
+            port: mysql
         resources:
+          limits:
+            cpu: "1"
+            memory: 1Gi
           requests:
-            storage: 2Gi
+            cpu: 250m
+            memory: 512Mi
+        startupProbe:
+          failureThreshold: 30
+          periodSeconds: 5
+          tcpSocket:
+            port: mysql
+        volumeMounts:
+        - mountPath: /var/lib/mysql
+          name: mysql-data
+  volumeClaimTemplates:
+  - metadata:
+      labels:
+        app.kubernetes.io/component: mysql
+        app.kubernetes.io/name: postifyhq
+        environment: development
+      name: mysql-data
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 2Gi

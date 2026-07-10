@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: postifyhq-mysql-storage-metrics
+  namespace: postifyhq
+  labels:
+    app.kubernetes.io/name: postifyhq
+    app.kubernetes.io/component: mysql-storage-metrics
+    environment: development
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: postifyhq
+    app.kubernetes.io/component: mysql
+  ports:
+    - name: metrics
+      port: 9104
+      targetPort: metrics
