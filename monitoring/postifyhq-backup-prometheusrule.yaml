@@ -1,0 +1,41 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: postifyhq-backup-rules
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: postifyhq
+    app.kubernetes.io/component: mysql-backup
+    app.kubernetes.io/part-of: workhour-platform
+    release: monitoring
+spec:
+  groups:
+    - name: postifyhq.backup
+      rules:
+        - alert: PostifyHQMySQLBackupJobFailed
+          expr: |
+            (
+              sum by (namespace, job_name) (
+                kube_job_status_failed{
+                  namespace="postifyhq"
+                } > 0
+              )
+              *
+              on (namespace, job_name)
+              group_left(owner_name)
+              kube_job_owner{
+                namespace="postifyhq",
+                owner_kind="CronJob",
+                owner_name="postifyhq-mysql-backup",
+                owner_is_controller="true"
+              }
+            ) > 0
+          for: 1m
+          labels:
+            severity: warning
+            application: postifyhq
+            component: mysql-backup
+            signal: backup
+          annotations:
+            summary: "PostifyHQ MySQL backup Job failed"
+            description: "Backup Job {{ $labels.job_name }} owned by the PostifyHQ MySQL backup CronJob has failed."

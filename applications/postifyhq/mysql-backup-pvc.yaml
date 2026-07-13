@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postifyhq-mysql-backups
+  namespace: postifyhq
+  labels:
+    app.kubernetes.io/name: postifyhq
+    app.kubernetes.io/component: mysql-backup
+    app.kubernetes.io/part-of: workhour-platform
+    environment: development
+    team: platform-engineering
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: standard
+  resources:
+    requests:
+      storage: 1Gi
