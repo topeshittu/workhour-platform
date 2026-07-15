@@ -1,0 +1,554 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postifyhq-operational-dashboard
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+    app.kubernetes.io/name: postifyhq-operational-dashboard
+    app.kubernetes.io/part-of: workhour-platform
+data:
+  postifyhq-operational-dashboard.json: |
+    {
+      "title": "PostifyHQ — Operational Overview",
+      "uid": "postifyhq-operational",
+      "tags": [
+        "postifyhq",
+        "operations",
+        "workhour-platform"
+      ],
+      "timezone": "browser",
+      "schemaVersion": 41,
+      "version": 1,
+      "refresh": "30s",
+      "time": {
+        "from": "now-1h",
+        "to": "now"
+      },
+      "panels": [
+        {
+          "type": "stat",
+          "title": "PostifyHQ Availability",
+          "id": 1,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "gridPos": {
+            "x": 0,
+            "y": 0,
+            "w": 8,
+            "h": 4
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "kube_deployment_status_replicas_available{namespace=\"postifyhq\",deployment=\"postifyhq-web\"} / kube_deployment_spec_replicas{namespace=\"postifyhq\",deployment=\"postifyhq-web\"}",
+              "instant": true
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percentunit",
+              "min": 0,
+              "max": 1,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": null
+                  },
+                  {
+                    "color": "green",
+                    "value": 1
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "values": false
+            }
+          }
+        },
+        {
+          "type": "stat",
+          "title": "HTTP Route",
+          "id": 2,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "gridPos": {
+            "x": 8,
+            "y": 0,
+            "w": 8,
+            "h": 4
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "probe_success{app=\"postifyhq\",component=\"ingress\",job=\"postifyhq-ingress-http\"}",
+              "instant": true
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "min": 0,
+              "max": 1,
+              "mappings": [
+                {
+                  "type": "value",
+                  "options": {
+                    "0": {
+                      "text": "Unreachable",
+                      "color": "red"
+                    },
+                    "1": {
+                      "text": "Reachable",
+                      "color": "green"
+                    }
+                  }
+                }
+              ],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": null
+                  },
+                  {
+                    "color": "green",
+                    "value": 1
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "values": false
+            }
+          }
+        },
+        {
+          "type": "stat",
+          "title": "Active PostifyHQ Alerts",
+          "id": 3,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "gridPos": {
+            "x": 16,
+            "y": 0,
+            "w": 8,
+            "h": 4
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "count(ALERTS{alertname=~\"PostifyHQ.*\",alertstate=\"firing\"}) or vector(0)",
+              "instant": true
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "min": 0,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 1
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "values": false
+            }
+          }
+        },
+        {
+          "type": "timeseries",
+          "title": "Desired vs Available Web Replicas",
+          "id": 4,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "gridPos": {
+            "x": 0,
+            "y": 4,
+            "w": 12,
+            "h": 8
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "kube_deployment_spec_replicas{namespace=\"postifyhq\",deployment=\"postifyhq-web\"}",
+              "legendFormat": "Desired"
+            },
+            {
+              "refId": "B",
+              "expr": "kube_deployment_status_replicas_available{namespace=\"postifyhq\",deployment=\"postifyhq-web\"}",
+              "legendFormat": "Available"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "min": 0
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "table",
+              "placement": "bottom",
+              "calcs": [
+                "lastNotNull"
+              ]
+            }
+          }
+        },
+        {
+          "type": "timeseries",
+          "title": "Updated vs Desired Web Replicas",
+          "id": 5,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "gridPos": {
+            "x": 12,
+            "y": 4,
+            "w": 12,
+            "h": 8
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "kube_deployment_status_replicas_updated{namespace=\"postifyhq\",deployment=\"postifyhq-web\"}",
+              "legendFormat": "Updated"
+            },
+            {
+              "refId": "B",
+              "expr": "kube_deployment_spec_replicas{namespace=\"postifyhq\",deployment=\"postifyhq-web\"}",
+              "legendFormat": "Desired"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "min": 0
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "table",
+              "placement": "bottom",
+              "calcs": [
+                "lastNotNull"
+              ]
+            }
+          }
+        },
+        {
+          "type": "timeseries",
+          "title": "Web CPU Pressure",
+          "id": 6,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "gridPos": {
+            "x": 0,
+            "y": 12,
+            "w": 12,
+            "h": 8
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "100 * rate(container_cpu_usage_seconds_total{namespace=\"postifyhq\",pod=~\"postifyhq-web-.*\"}[5m]) / on(namespace,pod) kube_pod_container_resource_limits{namespace=\"postifyhq\",pod=~\"postifyhq-web-.*\",container=\"postifyhq-web\",resource=\"cpu\"}",
+              "legendFormat": "{{pod}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "min": 0,
+              "max": 100,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 70
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "table",
+              "placement": "bottom",
+              "calcs": [
+                "lastNotNull"
+              ]
+            }
+          }
+        },
+        {
+          "type": "timeseries",
+          "title": "Web Memory Pressure",
+          "id": 7,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "gridPos": {
+            "x": 12,
+            "y": 12,
+            "w": 12,
+            "h": 8
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "100 * container_memory_working_set_bytes{namespace=\"postifyhq\",pod=~\"postifyhq-web-.*\"} / on(namespace,pod) kube_pod_container_resource_limits{namespace=\"postifyhq\",pod=~\"postifyhq-web-.*\",container=\"postifyhq-web\",resource=\"memory\"}",
+              "legendFormat": "{{pod}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "min": 0,
+              "max": 100,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 70
+                  },
+                  {
+                    "color": "red",
+                    "value": 80
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "legend": {
+              "displayMode": "table",
+              "placement": "bottom",
+              "calcs": [
+                "lastNotNull"
+              ]
+            }
+          }
+        },
+        {
+          "type": "stat",
+          "title": "MySQL Workload Health",
+          "id": 8,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "gridPos": {
+            "x": 0,
+            "y": 20,
+            "w": 8,
+            "h": 5
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "kube_statefulset_status_replicas_ready{namespace=\"postifyhq\",statefulset=\"postifyhq-mysql\"} == bool on(namespace,statefulset) kube_statefulset_replicas{namespace=\"postifyhq\",statefulset=\"postifyhq-mysql\"}",
+              "instant": true
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "min": 0,
+              "max": 1,
+              "mappings": [
+                {
+                  "type": "value",
+                  "options": {
+                    "0": {
+                      "text": "Degraded",
+                      "color": "red"
+                    },
+                    "1": {
+                      "text": "Healthy",
+                      "color": "green"
+                    }
+                  }
+                }
+              ],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": null
+                  },
+                  {
+                    "color": "green",
+                    "value": 1
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "values": false
+            }
+          }
+        },
+        {
+          "type": "stat",
+          "title": "MySQL Storage Used",
+          "id": 9,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "gridPos": {
+            "x": 8,
+            "y": 20,
+            "w": 8,
+            "h": 5
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "postifyhq_mysql_pvc_used_percent{namespace=\"postifyhq\",statefulset=\"postifyhq-mysql\"}",
+              "instant": true
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent",
+              "min": 0,
+              "max": 100
+            },
+            "overrides": []
+          },
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "values": false
+            }
+          }
+        },
+        {
+          "type": "table",
+          "title": "Backup Job Status",
+          "id": 10,
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "gridPos": {
+            "x": 16,
+            "y": 20,
+            "w": 8,
+            "h": 8
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "max by (job_name) ((kube_job_status_succeeded{namespace=\"postifyhq\"} + 2 * kube_job_status_failed{namespace=\"postifyhq\"}) * on(namespace,job_name) group_left(owner_name) kube_job_owner{namespace=\"postifyhq\",owner_kind=\"CronJob\",owner_name=\"postifyhq-mysql-backup\",owner_is_controller=\"true\"})",
+              "instant": true,
+              "format": "table"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [
+                {
+                  "type": "value",
+                  "options": {
+                    "0": {
+                      "text": "Running / Pending",
+                      "color": "yellow"
+                    },
+                    "1": {
+                      "text": "Succeeded",
+                      "color": "green"
+                    },
+                    "2": {
+                      "text": "Failed",
+                      "color": "red"
+                    }
+                  }
+                }
+              ]
+            },
+            "overrides": []
+          },
+          "options": {
+            "showHeader": true
+          }
+        }
+      ]
+    }
