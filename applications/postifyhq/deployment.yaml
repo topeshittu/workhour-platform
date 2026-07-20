@@ -55,6 +55,11 @@ spec:
                 configMapKeyRef:
                   name: postifyhq-config
                   key: LOG_LEVEL
+            - name: LOG_CHANNEL
+              valueFrom:
+                configMapKeyRef:
+                  name: postifyhq-config
+                  key: LOG_CHANNEL
             - name: TIMEZONE
               valueFrom:
                 configMapKeyRef:

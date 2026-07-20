@@ -15,6 +15,7 @@ data:
   APP_ENV: "local"
   APP_URL: "http://postifyhq.local"
   LOG_LEVEL: "info"
+  LOG_CHANNEL: "stderr"
   TIMEZONE: "UTC"
   CACHE_DRIVER: "file"
   DB_HOST: "postifyhq-mysql"
